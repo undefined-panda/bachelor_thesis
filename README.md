@@ -5,7 +5,7 @@ The objective is to improved pulsar detection by creating customized filters for
 
 The Deep Learning Framework PyTorch is used to create and train the networks. Therefore to be able to execute the programm this framework is necessary (see https://pytorch.org/get-started/locally/ for further information).
 
-Part of my thesis was to create my own synthesized dataset. The code can be found in ```synthetic_data_generation.py```. An exponential decaying function is employed to simulate the shape of a pulsar image, replicating its dispersion delay frequency measurement.
+Part of my thesis was to create my own synthesized dataset. The code can be found in ```src/synthetic_data_generation.py```. An exponential decaying function is employed to simulate the shape of a pulsar image, replicating its dispersion delay frequency measurement.
 
 Examples:
 
