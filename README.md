@@ -21,4 +21,4 @@ Example:
 
 To execute the tests run ```main.ipynb```.
 
-- 32x32 works with a learning rate of 0.001
+For hyperparameter tuning, navigate to ```src/parameter_tuning.py```. There you can specify the parameter values and dataset to test on, to perform a grid search.
