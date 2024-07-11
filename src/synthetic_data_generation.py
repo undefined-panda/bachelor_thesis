@@ -8,7 +8,9 @@ import matplotlib.pyplot as plt
 import os
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
-from .helper_functions import exponential_decay, my_round, number_iterations, manhatten_distance, get_odd_number
+
+# my files
+from src.helper_functions import exponential_decay, my_round, number_iterations, manhatten_distance, get_odd_number
 
 def generate_pulsar_variation(dim, num_img, ranges):
     """
@@ -194,12 +196,12 @@ def main(dim_list, img_list):
 
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
-    
+        
         if os.path.isfile(f"data/{file_path}.npz"):
             print(f"Dataset for {dim}x{dim} already exists. Do you want to recreate it? [Y/N]")
             new = input()
             if new.lower() == "y":
-                print(f"Creating {dim}x{dim} dataset")
+                print(f"Recreating {dim}x{dim} dataset")
                 num_img = img_list[i]
                 save_dataset(dim=dim, num_img=num_img, test_seed=None, dir=file_path)
             else:

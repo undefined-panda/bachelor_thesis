@@ -7,12 +7,14 @@ import torch.nn as nn
 import numpy as np
 import torch.optim as optim
 import matplotlib.pyplot as plt
-from .helper_functions import decorate_text, fit, replace_value_with_value
-from .synthetic_data_generation import generate_train_test_valid_data
 from tqdm import tqdm
-from .custom_filters import *
 from matplotlib.ticker import MultipleLocator
-from .cnn_models import *
+
+# my files
+from src.helper_functions import decorate_text, fit
+from src.synthetic_data_generation import generate_train_test_valid_data
+from src.custom_filters import *
+from src.cnn_models import PulsarDetectionCNN_1
 
 def test_1(dataset, epochs, lr, bs, learn_plot, graph_plot):
     labels = dataset["labels"]
@@ -120,9 +122,7 @@ def test_2(dataset, epochs, lr, bs, learn_plot, graph_plot):
         default_test_acc_history.append(default_test_acc)
 
         # custom filter
-        filters = custom_filters_1()
-        modified_filters = replace_value_with_value(filters, 0, noise/100 - 0.5)
-        custom_filters = torch.from_numpy(modified_filters)
+        custom_filters = custom_filters_2(noise)
         custom_bias = torch.zeros(custom_filters.shape[0], dtype=torch.float32)
         custom_model = PulsarDetectionCNN_1(dim, custom_filters, custom_bias)
         custom_model_name = type(custom_model).__name__
@@ -199,7 +199,7 @@ def test_3(dataset, epochs, lr, bs, learn_plot, graph_plot):
         default_test_acc_history.append(default_test_acc)
 
         # custom filters
-        filters = custom_filters_2(size=3, num=len(default_model.conv1.weight), noise=0.0)
+        filters = custom_filters_3(size=3, num=len(default_model.conv1.weight), noise=0.0)
         custom_filters = torch.from_numpy(filters)
         custom_bias = torch.zeros(custom_filters.shape[0], dtype=torch.float32)
         custom_model = PulsarDetectionCNN_1(dim, custom_filters, custom_bias)

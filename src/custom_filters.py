@@ -3,7 +3,11 @@ This file contains the custom filters. Filters are created as numpy arrays and l
 """
 
 import numpy as np    
-from .synthetic_data_generation import generate_pulsars, generate_data
+import torch
+
+# my files
+from src.synthetic_data_generation import generate_pulsars, generate_data
+from src.helper_functions import replace_value_with_value
 
 
 def custom_filters_1():
@@ -39,7 +43,12 @@ def custom_filters_1():
 
     return filters
 
-def custom_filters_2(size, num, noise):
+def custom_filters_2(noise):
+    filters = custom_filters_1()
+    modified_filters = replace_value_with_value(filters, 0, noise/100 - 0.5)
+    custom_filters = torch.from_numpy(modified_filters)
+
+def custom_filters_3(size, num, noise):
     """ 
     Custom filters created by pulsar generator to get pulsar form with noise.
     """
