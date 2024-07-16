@@ -60,7 +60,7 @@ class PulsarDetectionCNN_1(nn.Module):
             self.conv2 = nn.Conv2d(16, 64, kernel_size=3, padding=1)
         
         # this part is to determine the shape of the first fully connected layer
-        test_sample = torch.randn(dim, dim).view(-1,1,dim,dim)
+        test_sample = torch.randn(dim, dim, dtype=torch.float32).view(-1,1,dim,dim)
         self._to_linear = None
         self.convs(test_sample)
 

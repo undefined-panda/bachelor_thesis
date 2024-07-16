@@ -210,4 +210,5 @@ def main(dim_list, img_list):
         
         else:
             num_img = img_list[i]
+            print(f"Creating {dim}x{dim} dataset")
             save_dataset(dim=dim, num_img=num_img, test_seed=None, dir=file_path)

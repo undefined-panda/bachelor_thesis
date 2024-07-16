@@ -46,7 +46,8 @@ def custom_filters_1():
 def custom_filters_2(noise):
     filters = custom_filters_1()
     modified_filters = replace_value_with_value(filters, 0, noise/100 - 0.5)
-    custom_filters = torch.from_numpy(modified_filters)
+    
+    return modified_filters
 
 def custom_filters_3(size, num, noise):
     """ 
