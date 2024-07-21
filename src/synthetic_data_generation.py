@@ -101,13 +101,13 @@ def generate_data(dim, y_values_list, noise, test_seed=None, plot=False):
         grayscale_img = np.random.randint(0, (0.5*256) + noise * (256 - (0.5*256)), size=(1, dim, dim), dtype=np.uint8)
         pulsar_img = generate_pulsar_img(dim=dim, y_values=y_values_list[i], background=grayscale_img)
 
-        # non pulsar
-        data.append(grayscale_img)
-        labels.append(1)
-
         # pulsar
         data.append(pulsar_img)
         labels.append(0)
+        
+        # non pulsar
+        data.append(grayscale_img)
+        labels.append(1)
     
     data, labels = np.array(data), np.array(labels)
     
@@ -134,7 +134,7 @@ def generate_data(dim, y_values_list, noise, test_seed=None, plot=False):
 
     return  data, labels
 
-def generate_train_test_valid_data(data, labels, bs=32):
+def generate_train_test_valid_data(data, labels, with_valid=False, bs=32):
     """
     Splits data into train, validation and test data and turns it into DataLoaders for efficient processing.
     """
@@ -146,18 +146,25 @@ def generate_train_test_valid_data(data, labels, bs=32):
     X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, shuffle=True)
 
     # split train into train and valid data
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42)
+    if with_valid:
+        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42) 
 
     # Converting training and testing set to use DataLoaders for easily iterating over batches
     X_train, y_train = torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.float32)
     X_test, y_test = torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_test, dtype=torch.float32)
-    X_val, y_val = torch.tensor(X_val, dtype=torch.float32), torch.tensor(y_val, dtype=torch.float32)
+
+    if with_valid:
+        X_val, y_val = torch.tensor(X_val, dtype=torch.float32), torch.tensor(y_val, dtype=torch.float32)
 
     train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=bs, shuffle=True)
     test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=bs)
-    valid_loader = DataLoader(TensorDataset(X_val, y_val), batch_size=bs)
-
-    return train_loader, test_loader, valid_loader
+    
+    if with_valid:
+        valid_loader = DataLoader(TensorDataset(X_val, y_val), batch_size=bs)
+        return train_loader, test_loader, valid_loader
+    
+    else:
+        return train_loader, test_loader
 
 def save_dataset(dim, num_img, test_seed=None, dir="my_synthesized_data"):
     """

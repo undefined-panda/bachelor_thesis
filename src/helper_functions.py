@@ -157,6 +157,9 @@ def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=Non
             opt.step()
             train_loss += loss.item() * sample.size(0)
         
+        train_loss /= len(train_data.dataset)
+        train_loss_history.append(train_loss)
+
         if valid_data:
             valid_loss = 0.0
             correct = 0
@@ -169,17 +172,18 @@ def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=Non
                     pred = output.argmax(dim=1, keepdim=True)
                     true_labels = label.argmax(dim=1, keepdim=True)
                     correct += (pred == true_labels).sum().item()
+            
+            
+            total = len(valid_data.dataset)
+            valid_loss /= len(valid_data)
+            valid_loss_history.append(valid_loss)
+            valid_acc_history.append(correct/total)
+            print(f"Train Epoch {epoch}\tTrain Loss: {train_loss:.6f}\tValid Loss: {valid_loss:.6f}\tValid Acc: {correct}/{total} ({100. * correct/total}%)") if learn_plot else None
+
+        else:
+            print(f"Train Epoch {epoch}\tTrain Loss: {train_loss:.6f}") if learn_plot else None
+
         
-        train_loss /= len(train_data.dataset)
-        total = len(valid_data.dataset)
-        valid_loss /= len(valid_data)
-
-        train_loss_history.append(train_loss)
-        valid_loss_history.append(valid_loss)
-        valid_acc_history.append(correct/total)
-
-        print(f"Train Epoch {epoch}\tTrain Loss: {train_loss:.6f}\tValid Loss: {valid_loss:.6f}\tValid Acc: {correct}/{total} ({100. * correct/total}%)") if learn_plot else None
-
     # testing data after training
     if test_data:
         print() if learn_plot else None

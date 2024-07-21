@@ -5,6 +5,7 @@ This file is contains the neural network classes.
 import torch
 import torch.nn as nn 
 import torch.nn.functional as F
+import torch.optim as optim
 
 class TuneNet(nn.Module):
     """
@@ -43,13 +44,13 @@ class TuneNet(nn.Module):
         
         return x
 
-class PulsarDetectionCNN_1(nn.Module):
-    def __init__(self, dim, filters=None, bias=None):
-        super(PulsarDetectionCNN_1, self).__init__()
+class PulsarDetectionNet(nn.Module):
+    def __init__(self, dim, c2=64, filters=None, bias=None):
+        super(PulsarDetectionNet, self).__init__()
 
         if filters is not None:
             self.conv1 = nn.Conv2d(1, len(filters), kernel_size=3, padding=1)
-            self.conv2 = nn.Conv2d(len(filters), 32, kernel_size=3, padding=1)
+            self.conv2 = nn.Conv2d(len(filters), 64, kernel_size=3, padding=1)
             self.conv1.weight = nn.Parameter(filters)
 
         if bias is not None:
@@ -83,3 +84,49 @@ class PulsarDetectionCNN_1(nn.Module):
         x = self.fc2(x) 
         
         return x
+
+class SparseAutoencoder(nn.Module):
+    def __init__(self, latent_size=32, criterion=None, sparsity_param=0.05, beta=1e-3):
+        super(SparseAutoencoder, self).__init__()
+
+        self.sparsity_param = sparsity_param
+        self.beta = beta
+        if criterion is None:
+            self.criterion = nn.MSELoss(reduction='mean')
+        
+        # Encoder
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+
+        # Bottleneck layer
+        self.latent = nn.Conv2d(16, latent_size, kernel_size=3, stride=1, padding=1)
+
+        # Decoder
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(latent_size, 16, kernel_size=2, stride=2),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=1, padding=1),
+            nn.Sigmoid()  # Sigmoid to map output to [0, 1]
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        self.encoded = self.latent(x)
+        x = self.decoder(self.encoded)
+        return x
+    
+    def kl_divergence(self, p, q):
+        return p * torch.log(p / q) + (1 - p) * torch.log((1 - p) / (1 - q))
+    
+    def loss_function(self, recon_x, x):
+        # Reconstruction loss
+        loss = self.criterion(recon_x, x)
+        
+        # Sparsity loss
+        rho_hat = torch.mean(torch.sigmoid(self.encoded), dim=[0, 2, 3])
+        sparsity_loss = torch.sum(self.kl_divergence(self.sparsity_param, rho_hat))
+        
+        return loss + self.beta * sparsity_loss
