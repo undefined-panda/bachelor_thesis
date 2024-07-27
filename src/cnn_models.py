@@ -5,11 +5,10 @@ This file is contains the neural network classes.
 import torch
 import torch.nn as nn 
 import torch.nn.functional as F
-import torch.optim as optim
 
 class TuneNet(nn.Module):
     """
-    This module is used to tune the network architecture.
+    This model is used to tune the network architecture.
     """
 
     def __init__(self, dim, c1=16, c2=32, c3=None, fc=64, f_size=3):
@@ -45,7 +44,10 @@ class TuneNet(nn.Module):
         return x
 
 class PulsarDetectionNet(nn.Module):
-    def __init__(self, dim, c2=64, filters=None, bias=None):
+    """
+    This model is used to train on pulsar data.
+    """
+    def __init__(self, dim, filters=None, bias=None):
         super(PulsarDetectionNet, self).__init__()
 
         if filters is not None:

@@ -2,15 +2,15 @@
 This file tests networks with different hyperparameters, to get the best ones.
 """
 
+import itertools
+import numpy as np
+import time
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import itertools
-import time
 
 from src.cnn_models import TuneNet
-from src.synthetic_data_generation import generate_train_test_valid_data
 from src.helper_functions import fit, decorate_text
+from src.synthetic_data_generation import generate_train_test_valid_data
 
 def get_all_configurations(config):
     keys = config.keys()

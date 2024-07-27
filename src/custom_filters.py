@@ -4,16 +4,16 @@ This file contains the custom filters. Filters are created as numpy arrays and l
 
 import numpy as np    
 import torch
-import torch.optim as optim
 import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
 # my files
-from src.synthetic_data_generation import generate_pulsars, generate_data, generate_train_test_valid_data
+from src.cnn_models import SparseAutoencoder, PulsarDetectionNet
 from src.helper_functions import replace_value_with_value, fit
 from src.lbp_sae_filter import typical_image_selector, get_lbp_images
 from src.lbp_sae_utils import train_autoencoder
-from src.cnn_models import SparseAutoencoder, PulsarDetectionNet
+from src.synthetic_data_generation import generate_pulsars, generate_data, generate_train_test_valid_data
 
 def custom_filters_1():
     """
@@ -58,6 +58,7 @@ def custom_filters_3(size, num, noise):
     """ 
     Custom filters created by pulsar generator to get pulsar form with noise.
     """
+    num = int(num/2)
 
     y_values_list = generate_pulsars(dim=size, num_img=num)
 
@@ -65,15 +66,15 @@ def custom_filters_3(size, num, noise):
 
     return filters/255
 
-def custom_filters_4():
-    dataset = np.load("32x32_synthesized_data.npz")
+def custom_filters_4(dataset_name):
+    dataset = np.load(f"data/{dataset_name}.npz")
     data = dataset[dataset.files[0]]
     labels = dataset["labels"]
-    train_loader, test_loader, valid_loader = generate_train_test_valid_data(data, labels, bs=32)
+    train_loader, test_loader = generate_train_test_valid_data(data, labels, bs=32)
 
     model = PulsarDetectionNet(32)
     opt = optim.Adam(model.parameters(), lr=0.01)
-    fit(model, 10, opt, nn.CrossEntropyLoss(), train_loader, test_loader, valid_loader, learn_plot=False)
+    fit(model, 10, opt, nn.CrossEntropyLoss(), train_loader, test_loader, learn_plot=False)
     filters = model.conv1.weight.data.cpu()
 
     return filters

@@ -133,17 +133,8 @@ def replace_value_with_value(filters, value1, value2):
 
     return np.where(filters == value1, value2, filters)
 
-def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=None, learn_plot=True):
-    """
-    This function trains the model and, if given, also tests it.
-    """
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-
+def train_model(model, epochs, opt, loss_fun, train_data, device, valid_data=None, learn_plot=True):
     train_loss_history = []
-    valid_loss_history = []
-    valid_acc_history = []
 
     model.train()
     for epoch in range(1, epochs+1):
@@ -161,6 +152,8 @@ def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=Non
         train_loss_history.append(train_loss)
 
         if valid_data:
+            valid_loss_history = []
+            valid_acc_history = []
             valid_loss = 0.0
             correct = 0
             model.eval()
@@ -179,13 +172,16 @@ def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=Non
             valid_loss_history.append(valid_loss)
             valid_acc_history.append(correct/total)
             print(f"Train Epoch {epoch}\tTrain Loss: {train_loss:.6f}\tValid Loss: {valid_loss:.6f}\tValid Acc: {correct}/{total} ({100. * correct/total}%)") if learn_plot else None
-
+            return train_loss_history, valid_acc_history, valid_loss_history
+        
         else:
             print(f"Train Epoch {epoch}\tTrain Loss: {train_loss:.6f}") if learn_plot else None
+            return train_loss_history
 
-        
-    # testing data after training
+def test_model(model, loss_fun, device, test_data, learn_plot=True):
     if test_data:
+        test_acc_history = []
+        test_loss_history = []
         print() if learn_plot else None
         model.eval()
 
@@ -207,7 +203,12 @@ def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=Non
                 all_predictions.extend(pred.cpu().numpy())
                 all_true_labels.extend(true_labels.cpu().numpy())
 
-            print(f"Test Accuracy: {correct}/{total} ({100. * correct/total}%), Avg Loss: {test_loss/total:.4f}\n") if learn_plot else None
+            test_acc = correct/total
+            test_acc_history.append(test_acc)
+
+            avg_test_loss = test_loss/total
+            test_loss_history.append(avg_test_loss)
+            print(f"Test Accuracy: {correct}/{total} ({100. * test_acc}%), Avg Loss: {avg_test_loss:.4f}\n") if learn_plot else None
             
             if learn_plot:
                 confusion_mat = confusion_matrix(all_true_labels, all_predictions)
@@ -215,5 +216,17 @@ def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=Non
                 
                 print("\nClassification Report:\n", classification_rep, "\n")
                 print("Confusion Matrix:\n", confusion_mat)
+
+def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=None, learn_plot=True):
+    """
+    This function trains the model and, if given, also tests it.
+    """
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
+    train_loss_history, valid_acc_history, valid_loss_history = train_model(model, epochs, opt, loss_fun, train_data, device, valid_data, learn_plot)
+    if test_data:
+        test_acc_history, test_loss_history = test_model(model, loss_fun, device, test_data, learn_plot)
         
-    return train_loss_history, valid_loss_history, valid_acc_history, correct/total
+    return train_loss_history, valid_loss_history, valid_acc_history, test_acc_history, test_loss_history

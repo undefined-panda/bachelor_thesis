@@ -1,8 +1,7 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import random
 from src.helper_functions import decorate_text
 from tqdm import tqdm
-import random
 
 def calculate_dynamic_range(image):
     """Calculate the dynamic range of a grayscale image."""
