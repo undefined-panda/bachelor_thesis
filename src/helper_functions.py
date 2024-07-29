@@ -133,89 +133,80 @@ def replace_value_with_value(filters, value1, value2):
 
     return np.where(filters == value1, value2, filters)
 
-def train_model(model, epochs, opt, loss_fun, train_data, device, valid_data=None, learn_plot=True):
-    train_loss_history = []
-
+def train_model(model, epoch, opt, loss_fun, train_data, device, valid_data, learn_plot=True):
+    train_loss = 0
     model.train()
-    for epoch in range(1, epochs+1):
-        train_loss = 0
-        for sample, label in train_data:
-            sample, label = sample.to(device), label.to(device)
-            opt.zero_grad()
-            output = model(sample)
-            loss = loss_fun(output, label)
-            loss.backward()
-            opt.step()
-            train_loss += loss.item() * sample.size(0)
-        
-        train_loss /= len(train_data.dataset)
-        train_loss_history.append(train_loss)
+    for sample, label in train_data:
+        sample, label = sample.to(device), label.to(device)
+        opt.zero_grad()
+        output = model(sample)
+        loss = loss_fun(output, label)
+        loss.backward()
+        opt.step()
+        train_loss += loss.item() * sample.size(0)
+    
+    train_loss /= len(train_data.dataset)
 
-        if valid_data:
-            valid_loss_history = []
-            valid_acc_history = []
-            valid_loss = 0.0
-            correct = 0
-            model.eval()
-            with torch.no_grad():
-                for sample, label in valid_data:
-                    sample, label = sample.to(device), label.to(device)
-                    output = model(sample)
-                    valid_loss += loss_fun(output, label).item() * sample.size(0)
-                    pred = output.argmax(dim=1, keepdim=True)
-                    true_labels = label.argmax(dim=1, keepdim=True)
-                    correct += (pred == true_labels).sum().item()
-            
-            
-            total = len(valid_data.dataset)
-            valid_loss /= len(valid_data)
-            valid_loss_history.append(valid_loss)
-            valid_acc_history.append(correct/total)
-            print(f"Train Epoch {epoch}\tTrain Loss: {train_loss:.6f}\tValid Loss: {valid_loss:.6f}\tValid Acc: {correct}/{total} ({100. * correct/total}%)") if learn_plot else None
-            return train_loss_history, valid_acc_history, valid_loss_history
-        
-        else:
-            print(f"Train Epoch {epoch}\tTrain Loss: {train_loss:.6f}") if learn_plot else None
-            return train_loss_history
-
-def test_model(model, loss_fun, device, test_data, learn_plot=True):
-    if test_data:
-        test_acc_history = []
-        test_loss_history = []
-        print() if learn_plot else None
+    if valid_data:
         model.eval()
-
-        test_loss = 0
+        valid_loss = 0.0
         correct = 0
-        total = len(test_data.dataset)
-        all_predictions = []
-        all_true_labels = []
-        true_labels = []
+        model.eval()
         with torch.no_grad():
-            for sample, label in test_data:
+            for sample, label in valid_data:
                 sample, label = sample.to(device), label.to(device)
                 output = model(sample)
-                test_loss += loss_fun(output, label).item() * sample.size(0)
+                valid_loss += loss_fun(output, label).item() * sample.size(0)
                 pred = output.argmax(dim=1, keepdim=True)
                 true_labels = label.argmax(dim=1, keepdim=True)
                 correct += (pred == true_labels).sum().item()
+        
+        
+        total = len(valid_data.dataset)
+        valid_loss /= len(valid_data)
+        valid_acc = correct/total
+        print(f"Train Epoch {epoch}\tTrain Loss: {train_loss:.6f}\tValid Loss: {valid_loss:.6f}\tValid Acc: {correct}/{total} ({100. * valid_acc}%)") if learn_plot else None
+        return train_loss, valid_acc, valid_loss
+    
+    else:
+        print(f"Train Epoch {epoch}\tTrain Loss: {train_loss:.6f}") if learn_plot else None
+        return train_loss
 
-                all_predictions.extend(pred.cpu().numpy())
-                all_true_labels.extend(true_labels.cpu().numpy())
+def test_model(model, loss_fun, device, test_data, learn_plot=True):
+    print() if learn_plot else None
+    model.eval()
 
-            test_acc = correct/total
-            test_acc_history.append(test_acc)
+    test_loss = 0
+    correct = 0
+    total = len(test_data.dataset)
+    all_predictions = []
+    all_true_labels = []
+    true_labels = []
+    with torch.no_grad():
+        for sample, label in test_data:
+            sample, label = sample.to(device), label.to(device)
+            output = model(sample)
+            test_loss += loss_fun(output, label).item() * sample.size(0)
+            pred = output.argmax(dim=1, keepdim=True)
+            true_labels = label.argmax(dim=1, keepdim=True)
+            correct += (pred == true_labels).sum().item()
 
-            avg_test_loss = test_loss/total
-            test_loss_history.append(avg_test_loss)
-            print(f"Test Accuracy: {correct}/{total} ({100. * test_acc}%), Avg Loss: {avg_test_loss:.4f}\n") if learn_plot else None
+            all_predictions.extend(pred.cpu().numpy())
+            all_true_labels.extend(true_labels.cpu().numpy())
+
+        test_acc = correct/total
+
+        avg_test_loss = test_loss/total
+        print(f"Test Accuracy: {correct}/{total} ({100. * test_acc}%), Avg Loss: {avg_test_loss:.4f}\n") if learn_plot else None
+        
+        if learn_plot:
+            confusion_mat = confusion_matrix(all_true_labels, all_predictions)
+            classification_rep = classification_report(all_true_labels, all_predictions)
             
-            if learn_plot:
-                confusion_mat = confusion_matrix(all_true_labels, all_predictions)
-                classification_rep = classification_report(all_true_labels, all_predictions)
-                
-                print("\nClassification Report:\n", classification_rep, "\n")
-                print("Confusion Matrix:\n", confusion_mat)
+            print("\nClassification Report:\n", classification_rep, "\n")
+            print("Confusion Matrix:\n", confusion_mat)
+    
+    return test_acc, avg_test_loss
 
 def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=None, learn_plot=True):
     """
@@ -225,8 +216,36 @@ def fit(model, epochs, opt, loss_fun, train_data, test_data=None, valid_data=Non
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    train_loss_history, valid_acc_history, valid_loss_history = train_model(model, epochs, opt, loss_fun, train_data, device, valid_data, learn_plot)
-    if test_data:
-        test_acc_history, test_loss_history = test_model(model, loss_fun, device, test_data, learn_plot)
+    train_loss_history = []
+    valid_acc_history = []
+    valid_loss_history = []
+    test_acc_history = []
+    test_loss_history = []
+
+    for epoch in range(1, epochs + 1):
+        if valid_data:
+            train_loss, valid_acc, valid_loss = train_model(model, epoch, opt, loss_fun, train_data, device, valid_data, learn_plot)
+            train_loss_history.append(train_loss)
+            valid_acc_history.append(valid_acc)
+            valid_loss_history.append(valid_loss)
+        else:
+            train_loss = train_model(model, epoch, opt, loss_fun, train_data, device, valid_data, learn_plot)
+            train_loss_history.append(train_loss)
         
+        if test_data:
+            test_acc, test_loss = test_model(model, loss_fun, device, test_data, learn_plot)
+            test_acc_history.append(test_acc)
+            test_loss_history.append(test_loss)
+    
+    train_loss_history = train_loss_history if train_loss_history else None
+    valid_loss_history = valid_loss_history if valid_loss_history else None
+    valid_acc_history = valid_acc_history if valid_acc_history else None
+    test_acc_history = test_acc_history if test_acc_history else None
+    test_loss_history = test_loss_history if test_loss_history else None
+
     return train_loss_history, valid_loss_history, valid_acc_history, test_acc_history, test_loss_history
+
+def get_num_classes(labels):
+    num_classes = np.unique(labels)
+
+    return len(num_classes)

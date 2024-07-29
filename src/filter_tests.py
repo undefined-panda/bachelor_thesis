@@ -13,11 +13,11 @@ from matplotlib.ticker import MultipleLocator
 # my files
 from src.custom_filters import *
 from src.cnn_models import PulsarDetectionNet
-from src.helper_functions import decorate_text, fit
+from src.helper_functions import decorate_text, fit, get_num_classes
 from src.synthetic_data_generation import generate_train_test_valid_data
 
-def train_default_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader):
-    model = PulsarDetectionNet(dim)
+def train_default_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader):
+    model = PulsarDetectionNet(dim, num_classes)
     model_name = type(model).__name__
     decorate_text(f"{model_name} with default filters", f"{noise}% noise") if learn_plot else None
     opt = optim.Adam(model.parameters(), lr=lr)
@@ -25,10 +25,10 @@ def train_default_model(dim, noise, learn_plot, lr, epochs, train_loader, test_l
     
     return valid_acc, test_acc, test_loss
 
-def train_custom_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, filters):
+def train_custom_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, filters):
     custom_filters = torch.from_numpy(filters) if isinstance(filters, np.ndarray) else filters
     custom_bias = torch.zeros(custom_filters.shape[0], dtype=torch.float32)
-    model = PulsarDetectionNet(dim, custom_filters, custom_bias)
+    model = PulsarDetectionNet(dim, num_classes, custom_filters, custom_bias)
     model_name = type(model).__name__
     decorate_text(f"{model_name} with custom filters", f"{noise}% noise")  if learn_plot else None
     opt = optim.Adam(model.parameters(), lr=lr)
@@ -37,7 +37,6 @@ def train_custom_model(dim, noise, learn_plot, lr, epochs, train_loader, test_lo
     return valid_acc, test_acc, test_loss
 
 def plot_graph(epochs, noise_levels, def_acc_hist, cust_acc_hist):
-    noise_levels = noise_levels[-3:]
     x_range = range(1, epochs + 1)
     for j in range(len(noise_levels)):
         plt.plot(x_range, def_acc_hist[j], label=f"{noise_levels[j]}% noise")
@@ -82,6 +81,7 @@ def test_1(dataset, epochs, lr, bs, learn_plot, graph_plot):
     dim = len(dataset[dataset.files[0]][0][0])
     files = dataset.files
     labels = dataset["labels"]
+    num_classes = get_num_classes(labels)
 
     def_test_acc_hist = []
     cust_test_acc_hist = []
@@ -91,7 +91,9 @@ def test_1(dataset, epochs, lr, bs, learn_plot, graph_plot):
 
     cust_filters = custom_filters_1()
 
-    for i in tqdm(range(len(files)-1), desc ="Training models"):
+    for i in tqdm(range(len(files)), desc ="Training models"):
+        if files[i] == "labels":
+            continue
         noise = int(files[i].split("_")[1])
         noise_levels.append(noise)
         data = dataset[files[i]]
@@ -99,11 +101,11 @@ def test_1(dataset, epochs, lr, bs, learn_plot, graph_plot):
         valid_loader = None
 
         # default filters
-        _, def_test_acc, _ = train_default_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
+        _, def_test_acc, _ = train_default_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
         def_test_acc_hist.append(def_test_acc)
 
         # custom filters
-        _, cust_test_acc, _ = train_custom_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
+        _, cust_test_acc, _ = train_custom_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
         cust_test_acc_hist.append(cust_test_acc)
     
     if graph_plot:
@@ -113,14 +115,17 @@ def test_2(dataset, epochs, lr, bs, learn_plot, graph_plot):
     dim = len(dataset[dataset.files[0]][0][0])
     files = dataset.files
     labels = dataset["labels"]
+    num_classes = get_num_classes(labels)
 
     def_test_acc_hist = []
     cust_test_acc_hist = []
     noise_levels = []
     
-    decorate_text(f"Testing: default filters vs changing binary custom filters ({dim}x{dim})")
+    decorate_text(f"Testing: default filters vs changing binary custom filters v1 ({dim}x{dim})")
 
-    for i in tqdm(range(len(files)-1), desc ="Training models"):
+    for i in tqdm(range(len(files)), desc ="Training models"):
+        if files[i] == "labels":
+            continue
         noise = int(files[i].split("_")[1])
         noise_levels.append(noise)
         data = dataset[files[i]]
@@ -128,12 +133,12 @@ def test_2(dataset, epochs, lr, bs, learn_plot, graph_plot):
         valid_loader = None
 
         # default filters
-        _, def_test_acc, _ = train_default_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
+        _, def_test_acc, _ = train_default_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
         def_test_acc_hist.append(def_test_acc)
 
         # custom filters
         cust_filters = custom_filters_2(noise)
-        _, cust_test_acc, _ = train_custom_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
+        _, cust_test_acc, _ = train_custom_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
         cust_test_acc_hist.append(cust_test_acc)
     
     if graph_plot:
@@ -143,16 +148,17 @@ def test_3(dataset, epochs, lr, bs, learn_plot, graph_plot):
     dim = len(dataset[dataset.files[0]][0][0])
     files = dataset.files
     labels = dataset["labels"]
+    num_classes = get_num_classes(labels)
 
     def_test_acc_hist = []
     cust_test_acc_hist = []
     noise_levels = []
     
-    decorate_text(f"Testing: default filters vs 'mini-pulsar' custom filters ({dim}x{dim})")
+    decorate_text(f"Testing: default filters vs changing binary custom filters v2 ({dim}x{dim})")
 
-    cust_filters = custom_filters_3(3, 16, 0)
-
-    for i in tqdm(range(len(files)-1), desc ="Training models"):
+    for i in tqdm(range(len(files)), desc ="Training models"):
+        if files[i] == "labels":
+            continue
         noise = int(files[i].split("_")[1])
         noise_levels.append(noise)
         data = dataset[files[i]]
@@ -160,20 +166,56 @@ def test_3(dataset, epochs, lr, bs, learn_plot, graph_plot):
         valid_loader = None
 
         # default filters
-        _, def_test_acc, _ = train_default_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
+        _, def_test_acc, _ = train_default_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
         def_test_acc_hist.append(def_test_acc)
 
         # custom filters
-        _, cust_test_acc, _ = train_custom_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
+        cust_filters = custom_filters_3(noise)
+        _, cust_test_acc, _ = train_custom_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
         cust_test_acc_hist.append(cust_test_acc)
     
     if graph_plot:
         plot_graph(epochs, noise_levels, def_test_acc_hist, cust_test_acc_hist)
 
-def test_4(dataset, epochs, lr, bs, dataset_name, learn_plot, graph_plot):
+def test_4(dataset, epochs, lr, bs, learn_plot, graph_plot):
     dim = len(dataset[dataset.files[0]][0][0])
     files = dataset.files
     labels = dataset["labels"]
+    num_classes = get_num_classes(labels)
+
+    def_test_acc_hist = []
+    cust_test_acc_hist = []
+    noise_levels = []
+    
+    decorate_text(f"Testing: default filters vs 'mini-pulsar' custom filters ({dim}x{dim})")
+
+    cust_filters = custom_filters_4(3, 16, 0)
+
+    for i in tqdm(range(len(files)), desc ="Training models"):
+        if files[i] == "labels":
+            continue
+        noise = int(files[i].split("_")[1])
+        noise_levels.append(noise)
+        data = dataset[files[i]]
+        train_loader, test_loader = generate_train_test_valid_data(data, labels, bs=bs, with_valid=False)
+        valid_loader = None
+
+        # default filters
+        _, def_test_acc, _ = train_default_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
+        def_test_acc_hist.append(def_test_acc)
+
+        # custom filters
+        _, cust_test_acc, _ = train_custom_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
+        cust_test_acc_hist.append(cust_test_acc)
+    
+    if graph_plot:
+        plot_graph(epochs, noise_levels, def_test_acc_hist, cust_test_acc_hist)
+
+def test_5(dataset, epochs, lr, bs, dataset_name, learn_plot, graph_plot):
+    dim = len(dataset[dataset.files[0]][0][0])
+    files = dataset.files
+    labels = dataset["labels"]
+    num_classes = get_num_classes(labels)
 
     def_test_acc_hist = []
     cust_test_acc_hist = []
@@ -182,9 +224,11 @@ def test_4(dataset, epochs, lr, bs, dataset_name, learn_plot, graph_plot):
     decorate_text(f"Testing: default filters vs pre-trained custom filters ({dim}x{dim})", 
                   "pre-training my 32x32 synthesized data")
 
-    cust_filters = custom_filters_4(dataset_name)
+    cust_filters = custom_filters_5(dataset_name)
 
-    for i in tqdm(range(len(files)-1), desc ="Training models"):
+    for i in tqdm(range(len(files)), desc ="Training models"):
+        if files[i] == "labels":
+            continue
         noise = int(files[i].split("_")[1])
         noise_levels.append(noise)
         data = dataset[files[i]]
@@ -192,21 +236,22 @@ def test_4(dataset, epochs, lr, bs, dataset_name, learn_plot, graph_plot):
         valid_loader = None
 
         # default filters
-        _, def_test_acc, _ = train_default_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
+        _, def_test_acc, _ = train_default_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
         def_test_acc_hist.append(def_test_acc)
 
         # custom filters
-        _, cust_test_acc, _ = train_custom_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
+        _, cust_test_acc, _ = train_custom_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
         cust_test_acc_hist.append(cust_test_acc)
     
     if graph_plot:
         plot_graph(epochs, noise_levels, def_test_acc_hist, cust_test_acc_hist)
 
 # not working on 32x32
-def test_5(dataset, epochs, lr, bs, learn_plot, graph_plot):
+def test_6(dataset, epochs, lr, bs, learn_plot, graph_plot):
     dim = len(dataset[dataset.files[0]][0][0])
     files = dataset.files
     labels = dataset["labels"]
+    num_classes = get_num_classes(labels)
 
     def_test_acc_hist = []
     cust_test_acc_hist = []
@@ -214,7 +259,9 @@ def test_5(dataset, epochs, lr, bs, learn_plot, graph_plot):
     
     decorate_text(f"Testing: default filters vs lbp-sae custom filters ({dim}x{dim})")
 
-    for i in tqdm(range(len(files)-1), desc ="Training models"):
+    for i in tqdm(range(len(files)), desc ="Training models"):
+        if files[i] == "labels":
+            continue
         noise = int(files[i].split("_")[1])
         noise_levels.append(noise)
         data = dataset[files[i]]
@@ -222,12 +269,12 @@ def test_5(dataset, epochs, lr, bs, learn_plot, graph_plot):
         valid_loader = None
 
         # default filters
-        _, def_test_acc, _ = train_default_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
+        _, def_test_acc, _ = train_default_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader)
         def_test_acc_hist.append(def_test_acc)
 
         # custom filters
-        cust_filters = custom_filters_5(data, labels)
-        _, cust_test_acc, _ = train_custom_model(dim, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
+        cust_filters = custom_filters_6(data, labels)
+        _, cust_test_acc, _ = train_custom_model(dim, num_classes, noise, learn_plot, lr, epochs, train_loader, test_loader, valid_loader, cust_filters)
         cust_test_acc_hist.append(cust_test_acc)
     
     if graph_plot:

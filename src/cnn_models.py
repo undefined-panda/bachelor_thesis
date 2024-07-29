@@ -47,7 +47,7 @@ class PulsarDetectionNet(nn.Module):
     """
     This model is used to train on pulsar data.
     """
-    def __init__(self, dim, filters=None, bias=None):
+    def __init__(self, dim, num_classes, filters=None, bias=None):
         super(PulsarDetectionNet, self).__init__()
 
         if filters is not None:
@@ -68,7 +68,7 @@ class PulsarDetectionNet(nn.Module):
         self.convs(test_sample)
 
         self.fc1 = nn.Linear(self._to_linear, 128)
-        self.fc2 = nn.Linear(128, 2)
+        self.fc2 = nn.Linear(128, num_classes)
     
     def convs(self, x):
         x = F.max_pool2d(F.relu(self.conv1(x)), 2)

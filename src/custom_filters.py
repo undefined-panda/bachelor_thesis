@@ -54,7 +54,14 @@ def custom_filters_2(noise):
     
     return modified_filters
 
-def custom_filters_3(size, num, noise):
+def custom_filters_3(noise):
+    filters = custom_filters_1()
+    modified_filters = replace_value_with_value(filters, 1, 2)
+    modified_filters = replace_value_with_value(modified_filters, 0, noise/100)
+    
+    return modified_filters
+
+def custom_filters_4(size, num, noise):
     """ 
     Custom filters created by pulsar generator to get pulsar form with noise.
     """
@@ -64,9 +71,9 @@ def custom_filters_3(size, num, noise):
 
     filters, _ = generate_data(size, y_values_list, noise)
 
-    return filters/255
+    return np.array(filters/255, dtype=np.float32)
 
-def custom_filters_4(dataset_name):
+def custom_filters_5(dataset_name):
     dataset = np.load(f"data/{dataset_name}.npz")
     data = dataset[dataset.files[0]]
     labels = dataset["labels"]
@@ -79,7 +86,8 @@ def custom_filters_4(dataset_name):
 
     return filters
 
-def custom_filters_5(data, labels):
+# not working
+def custom_filters_6(data, labels):
     typical_images = typical_image_selector(data, labels)
     lbp_images = get_lbp_images(typical_images)
 
