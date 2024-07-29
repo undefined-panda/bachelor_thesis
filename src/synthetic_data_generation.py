@@ -2,12 +2,12 @@
 This file contains the functions to generate my synthetic data.
 """
 
-import torch
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import os
-from torch.utils.data import TensorDataset, DataLoader
+import torch
 from sklearn.model_selection import train_test_split
+from torch.utils.data import TensorDataset, DataLoader
 
 # my files
 from src.helper_functions import exponential_decay, my_round, number_iterations, manhatten_distance, get_odd_number
@@ -84,6 +84,20 @@ def generate_pulsar_img(dim, y_values, background):
 
     return final_pulsar_img
 
+def generate_background_v2(height, width, noise):
+    noise_image = np.random.normal(loc=127.5, scale=noise*127.5, size=(height, width))
+    noise_image = np.clip(noise_image, 0, 255)
+    noise_image = np.expand_dims(noise_image, axis=0)
+
+    return noise_image
+
+def generate_background_v3(height, width, noise):
+    noise_image = np.random.normal(loc=noise*127.5, scale=noise*127.5, size=(height, width))
+    noise_image = np.clip(noise_image, 0, 255)
+    noise_image = np.expand_dims(noise_image, axis=0)
+
+    return noise_image
+
 def generate_data(dim, y_values_list, noise, test_seed=None, plot=False):
     """
     Creates pulsar and non-pulsar images.
@@ -98,16 +112,18 @@ def generate_data(dim, y_values_list, noise, test_seed=None, plot=False):
     num_pulsars = len(y_values_list)
 
     for i in range(num_pulsars):
-        grayscale_img = np.random.randint(0, (0.5*256) + noise * (256 - (0.5*256)), size=(1, dim, dim), dtype=np.uint8)
+        grayscale_img = np.random.randint(0 + noise * 32, 32 + noise * (256 - 32), size=(1, dim, dim), dtype=np.uint8)
+        #grayscale_img = generate_background_v2(dim, dim, noise)
+        #grayscale_img = generate_background_v3(dim, dim, noise)
         pulsar_img = generate_pulsar_img(dim=dim, y_values=y_values_list[i], background=grayscale_img)
-
-        # non pulsar
-        data.append(grayscale_img)
-        labels.append(1)
 
         # pulsar
         data.append(pulsar_img)
         labels.append(0)
+        
+        # non pulsar
+        data.append(grayscale_img)
+        labels.append(1)
     
     data, labels = np.array(data), np.array(labels)
     
@@ -134,7 +150,7 @@ def generate_data(dim, y_values_list, noise, test_seed=None, plot=False):
 
     return  data, labels
 
-def generate_train_test_valid_data(data, labels, bs=32):
+def generate_train_test_valid_data(data, labels, with_valid=False, bs=32):
     """
     Splits data into train, validation and test data and turns it into DataLoaders for efficient processing.
     """
@@ -146,23 +162,32 @@ def generate_train_test_valid_data(data, labels, bs=32):
     X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, shuffle=True)
 
     # split train into train and valid data
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42)
+    if with_valid:
+        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42) 
 
     # Converting training and testing set to use DataLoaders for easily iterating over batches
     X_train, y_train = torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.float32)
     X_test, y_test = torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_test, dtype=torch.float32)
-    X_val, y_val = torch.tensor(X_val, dtype=torch.float32), torch.tensor(y_val, dtype=torch.float32)
+
+    if with_valid:
+        X_val, y_val = torch.tensor(X_val, dtype=torch.float32), torch.tensor(y_val, dtype=torch.float32)
 
     train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=bs, shuffle=True)
     test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=bs)
-    valid_loader = DataLoader(TensorDataset(X_val, y_val), batch_size=bs)
-
-    return train_loader, test_loader, valid_loader
+    
+    if with_valid:
+        valid_loader = DataLoader(TensorDataset(X_val, y_val), batch_size=bs)
+        return train_loader, test_loader, valid_loader
+    
+    else:
+        return train_loader, test_loader
 
 def save_dataset(dim, num_img, test_seed=None, dir="my_synthesized_data"):
     """
     Creates datasets with different noise levels and saves it.
     """
+
+    num_img = int(num_img/2)
 
     y_values_list = generate_pulsars(dim=dim, num_img=num_img, test_seed=test_seed)
 
@@ -186,10 +211,10 @@ def save_dataset(dim, num_img, test_seed=None, dir="my_synthesized_data"):
     
     print(f"\nDataset saved in '{file_path}'")
 
-def main(dim_list, img_list):
+def main(dim_list, img_list, file_name):
     for i in range(len(dim_list)):
         dim = dim_list[i]
-        file_path = f"{dim}x{dim}_synthesized_data"
+        file_path = f"{dim}x{dim}_{file_name}"
 
         parent_dir = os.path.dirname(os.path.dirname(__file__))  # Get the parent directory of 'src'
         data_dir = os.path.join(parent_dir, 'data')
@@ -210,4 +235,5 @@ def main(dim_list, img_list):
         
         else:
             num_img = img_list[i]
+            print(f"Creating {dim}x{dim} dataset")
             save_dataset(dim=dim, num_img=num_img, test_seed=None, dir=file_path)

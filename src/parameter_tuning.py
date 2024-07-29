@@ -2,15 +2,15 @@
 This file tests networks with different hyperparameters, to get the best ones.
 """
 
+import itertools
+import numpy as np
+import time
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import itertools
-import time
 
 from src.cnn_models import TuneNet
+from src.helper_functions import fit, decorate_text
 from src.synthetic_data_generation import generate_train_test_valid_data
-from src.helper_functions import fit, decorate_text, print_data
 
 def get_all_configurations(config):
     keys = config.keys()
@@ -47,7 +47,7 @@ def parameter_tuning(data, labels, config, epochs=10, learn_plot=False):
 
         train_loader, test_loader, valid_loader = generate_train_test_valid_data(data, labels, bs=bs)
 
-        decorate_text(f"{count}/{total} | c1: {c1}, c2: {c2}"+(f", c3: {c3}" if c3 is not None else "")+f", fc: {fc}, f_size: {f_size}, lr: {lr}, bs: {bs}")
+        decorate_text(f"{count}/{total} | c1: {c1}, c2: {c2}"+(f", c3: {c3}" if c3 is not None else "")+f", fc: {fc}, f_size: {f_size}, lr: {lr}, bs: {bs}") 
         model = TuneNet(dim, c1, c2, c3, fc, f_size)
         optimizer = optim.Adam(model.parameters(), lr=lr)
         loss_fun = nn.CrossEntropyLoss()
@@ -63,34 +63,28 @@ def parameter_tuning(data, labels, config, epochs=10, learn_plot=False):
     duration = end_time - start_time
     duration_str = time.strftime("%H:%M:%S", time.gmtime(duration))
     
-    print(f"\nBest configuration with Test Accuracy of {best_test_acc}:")
+    print(f"\nBest configuration with Test Accuracy of {best_test_acc}: (Runtime: {duration_str})")
     for key, value in best_config.items():
         print(f"{key}: {value}")
-    print(f"{duration_str}")
 
 if __name__ == "__main__":
-    config_32x32 = {
+    config = {
         "c1": [16, 32],
         "c2": [32, 64],
         "fc": [64, 128],
-        "f_size": [3],
-        "lr": [0.001],
-        "bs": [32, 64]
-    }
-    
-    config_128x128 = {
-        "c1": [32, 64],
-        "c2": [64, 128],
-        "c3": [64, 128],
-        "fc": [128, 256],
-        "f_size": [3,5],
-        "lr": [0.0001],
-        "bs": [32, 64]
+        "f_size": [3, 5],
+        "lr": [0.001, 0.0001, 0.00001],
+        "bs": [32]
     }
 
-    dataset = np.load('data/32x32_synthesized_data.npz')
     
-    data = dataset[dataset.files[4]]
+    dataset = np.load('data/128x128_synthesized_data.npz')
     labels = dataset["labels"]
-
-    parameter_tuning(data, labels, config_128x128, learn_plot=True)
+    
+    i = 1
+    print()
+    print(f"testing on {dataset.files[i]}")
+    print()
+    for j in range(3):
+        data = dataset[dataset.files[i]]
+        parameter_tuning(data, labels, config, learn_plot=False)
