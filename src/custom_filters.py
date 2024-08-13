@@ -1,104 +1,101 @@
-""" 
-This file contains the custom filters. Filters are created as numpy arrays and later transformed to tensors.
+"""
+This file contains the custom filters used to improve the performanz of the CNN.
+They are created as numpy-arrays and laters transformed to tensors.
 """
 
-import numpy as np    
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
-# my files
-from src.cnn_models import SparseAutoencoder, PulsarDetectionNet
-from src.helper_functions import replace_value_with_value, fit
-from src.lbp_sae_filter import typical_image_selector, get_lbp_images
-from src.lbp_sae_utils import train_autoencoder
-from src.synthetic_data_generation import generate_pulsars, generate_data, generate_train_test_valid_data
+def prewitt_filter(direction="both"):
+    prewitt_x = np.array(([-1, 0, 1],
+                          [-1, 0, 1],
+                          [-1, 0, 1]), dtype=np.float32)
 
-def custom_filters_1():
-    """
-    Binary custom filters that mimic form of pulsar.
-    """
-
-    np_filter_0 = np.array([[1., 0., 0.],
-                            [0., 1., 0.],
-                            [0., 0., 1.]])
-
-    np_filter_1 = np.array([[0., 0., 0.],
-                            [1., 1., 1.],
-                            [0., 0., 0.]])
-
-    np_filter_2 = np.array([[0., 1., 0.],
-                            [0., 1., 0.],
-                            [0., 1., 0.]])
-
-    np_filter_3 = np.array([[1., 0., 0.],
-                            [0., 1., 1.],
-                            [0., 0., 0.]])
-
-    np_filter_4 = np.array([[1., 0., 0.],
-                            [1., 0., 0.],
-                            [0., 1., 0.]])
-
-    np_filter_5 = np.array([[1., 1., 0.],
-                            [0., 0., 1.],
-                            [0., 0., 0.]])
-
-    filters = np.array([[np_filter_0], [np_filter_1], [np_filter_2], [np_filter_3], [np_filter_4], [np_filter_5]], dtype=np.float32)
-
-    return filters
-
-def custom_filters_2(noise):
-    filters = custom_filters_1()
-    modified_filters = replace_value_with_value(filters, 0, noise/100 - 0.5)
+    prewitt_y = np.array(([1, 1, 1],
+                          [0, 0, 0],
+                          [-1, -1, -1]), dtype=np.float32)
     
-    return modified_filters
+    if direction == "x":
+        return prewitt_x
+    elif direction == 'y':
+        return prewitt_y
+    elif direction == 'both':
+        return prewitt_x, prewitt_y
+    else:
+        raise ValueError("Invalid direction. Use 'x', 'y', or 'both'.")
 
-def custom_filters_3(noise):
-    filters = custom_filters_1()
-    modified_filters = replace_value_with_value(filters, 1, 2)
-    modified_filters = replace_value_with_value(modified_filters, 0, noise/100)
+def sobel_filter(direction="both"):
+    sobel_x = np.array(([-1,  0,  1],
+                        [-2,  0,  2],
+                        [-1,  0,  1]), dtype=np.float32)
+
+    sobel_y = np.array(([ 1,  2,  1],
+                        [ 0,  0,  0],
+                        [-1, -2, -1]), dtype=np.float32)
     
-    return modified_filters
+    if direction == "x":
+        return sobel_x
+    elif direction == 'y':
+        return sobel_y
+    elif direction == 'both':
+        return sobel_x, sobel_y
+    else:
+        raise ValueError("Invalid direction. Use 'x', 'y', or 'both'.")
 
-def custom_filters_4(size, num, noise):
-    """ 
-    Custom filters created by pulsar generator to get pulsar form with noise.
-    """
-    num = int(num/2)
+def kirsch_filter(directions="all"):
+    filters = {
+        'N': np.array([[-3, -3,  5],
+                       [-3,  0,  5],
+                       [-3, -3,  5]], dtype=np.float32),
 
-    y_values_list = generate_pulsars(dim=size, num_img=num)
+        'NE': np.array([[-3, -3, -3],
+                        [-3,  0,  5],
+                        [-3,  5,  5]], dtype=np.float32),
 
-    filters, _ = generate_data(size, y_values_list, noise)
+        'E': np.array([[-3, -3, -3],
+                       [-3,  0, -3],
+                       [ 5,  5,  5]], dtype=np.float32),
 
-    return np.array(filters/255, dtype=np.float32)
+        'SE': np.array([[-3, -3, -3],
+                        [ 5,  0, -3],
+                        [ 5,  5, -3]], dtype=np.float32),
 
-def custom_filters_5(dataset_name):
-    dataset = np.load(f"data/{dataset_name}.npz")
-    data = dataset[dataset.files[0]]
-    labels = dataset["labels"]
-    train_loader, test_loader = generate_train_test_valid_data(data, labels, bs=32)
+        'S': np.array([[ 5, -3, -3],
+                       [ 5,  0, -3],
+                       [ 5, -3, -3]], dtype=np.float32),
 
-    model = PulsarDetectionNet(32)
-    opt = optim.Adam(model.parameters(), lr=0.01)
-    fit(model, 10, opt, nn.CrossEntropyLoss(), train_loader, test_loader, learn_plot=False)
-    filters = model.conv1.weight.data.cpu()
+        'SW': np.array([[ 5,  5, -3],
+                        [ 5,  0, -3],
+                        [-3, -3, -3]], dtype=np.float32),
 
-    return filters
+        'W': np.array([[ 5,  5,  5],
+                       [-3,  0, -3],
+                       [-3, -3, -3]], dtype=np.float32),
 
-# not working
-def custom_filters_6(data, labels):
-    typical_images = typical_image_selector(data, labels)
-    lbp_images = get_lbp_images(typical_images)
+        'NW': np.array([[-3,  5,  5],
+                        [-3,  0,  5],
+                        [-3, -3, -3]], dtype=np.float32)
+    }
 
-    lbp_dataset = np.array([img for images in lbp_images.values() for img in images], dtype=np.float32)
-    lbp_dataset = lbp_dataset/255
-    train_loader = DataLoader(TensorDataset(torch.from_numpy(data), torch.from_numpy(data)), batch_size=1, shuffle=True)
-
-    model = SparseAutoencoder()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-    train_autoencoder(model, optimizer, train_loader, 20)
-    encoder_filters = model.encoder[0].weight.data.clone()
-
-    return encoder_filters
+    # return all filters
+    if directions == "all":
+        return filters
+    
+    # return one chosen filter
+    elif isinstance(directions, str):
+        if directions in filters:
+            return filters[directions]
+        else:
+            raise ValueError("Invalid direction. Use one of 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', or 'all'.")
+    
+    # return several chosen filter
+    elif isinstance(directions, list):
+        selected_filters = {dir: filters[dir] for dir in directions if dir in filters}
+        if len(selected_filters) != len(directions):
+            raise ValueError("One or more invalid directions provided.")
+        return selected_filters
+    else:
+        raise ValueError("Invalid type for directions. Use 'all', a single direction, or a list of directions.")

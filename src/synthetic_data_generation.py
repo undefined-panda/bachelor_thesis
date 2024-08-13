@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader
 
 # my files
-from src.helper_functions import exponential_decay, my_round, number_iterations, manhatten_distance, get_odd_number
+from utils import exponential_decay, my_round, number_iterations, manhatten_distance, get_odd_number
 
 def generate_pulsar_variation(dim, num_img, ranges):
     """
@@ -84,21 +84,14 @@ def generate_pulsar_img(dim, y_values, background):
 
     return final_pulsar_img
 
-def generate_background_v2(height, width, noise):
-    noise_image = np.random.normal(loc=127.5, scale=noise*127.5, size=(height, width))
-    noise_image = np.clip(noise_image, 0, 255)
-    noise_image = np.expand_dims(noise_image, axis=0)
-
-    return noise_image
-
-def generate_background_v3(height, width, noise):
+def generate_background(height, width, noise):
     noise_image = np.random.normal(loc=noise*127.5, scale=noise*127.5, size=(height, width))
     noise_image = np.clip(noise_image, 0, 255)
     noise_image = np.expand_dims(noise_image, axis=0)
 
     return noise_image
 
-def generate_data(dim, y_values_list, noise, test_seed=None, plot=False):
+def generate_dataset(dim, y_values_list, noise, test_seed=None, plot=False):
     """
     Creates pulsar and non-pulsar images.
     """
@@ -112,9 +105,7 @@ def generate_data(dim, y_values_list, noise, test_seed=None, plot=False):
     num_pulsars = len(y_values_list)
 
     for i in range(num_pulsars):
-        grayscale_img = np.random.randint(0 + noise * 32, 32 + noise * (256 - 32), size=(1, dim, dim), dtype=np.uint8)
-        #grayscale_img = generate_background_v2(dim, dim, noise)
-        #grayscale_img = generate_background_v3(dim, dim, noise)
+        grayscale_img = generate_background(dim, dim, noise)
         pulsar_img = generate_pulsar_img(dim=dim, y_values=y_values_list[i], background=grayscale_img)
 
         # pulsar
@@ -148,9 +139,9 @@ def generate_data(dim, y_values_list, noise, test_seed=None, plot=False):
         plt.tight_layout()
         plt.show()
 
-    return  data, labels
+    return data, labels
 
-def generate_train_test_valid_data(data, labels, with_valid=False, bs=32):
+def generate_train_test_valid_data(data, labels, with_valid=False, bs=32, test_split=0.2):
     """
     Splits data into train, validation and test data and turns it into DataLoaders for efficient processing.
     """
@@ -159,11 +150,11 @@ def generate_train_test_valid_data(data, labels, with_valid=False, bs=32):
     labels = np.eye(len(np.unique(labels)))[labels] # 1-hot encoded vector
 
     # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, shuffle=True)
+    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=test_split, shuffle=True)
 
     # split train into train and valid data
     if with_valid:
-        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42) 
+        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25) 
 
     # Converting training and testing set to use DataLoaders for easily iterating over batches
     X_train, y_train = torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.float32)
@@ -182,20 +173,37 @@ def generate_train_test_valid_data(data, labels, with_valid=False, bs=32):
     else:
         return train_loader, test_loader
 
-def save_dataset(dim, num_img, test_seed=None, dir="my_synthesized_data"):
+def save_dataset(dim, num_img, noise_values, test_seed=None, dir="my_synthesized_data_complex"):
     """
     Creates datasets with different noise levels and saves it.
     """
 
     num_img = int(num_img/2)
 
-    y_values_list = generate_pulsars(dim=dim, num_img=num_img, test_seed=test_seed)
+    datasets = {}
 
-    noise_00, labels = generate_data(dim, y_values_list, 0.0)
-    noise_70, _ = generate_data(dim, y_values_list, 0.7)
-    noise_80, _ = generate_data(dim, y_values_list, 0.8)
-    noise_90, _ = generate_data(dim, y_values_list, 0.9)
-    noise_100, _ = generate_data(dim, y_values_list, 1.0)
+    y_values_list = generate_pulsars(dim=dim, num_img=num_img, test_seed=test_seed)
+    noise_00, labels = generate_dataset(dim, y_values_list, 0.0)
+    datasets[f"n_00"] = noise_00
+    datasets['labels'] = labels
+
+    for noise in noise_values:
+        noise_key = f"n_{int(noise*100)}"
+        data, _ = generate_dataset(dim, y_values_list, noise)
+        if noise_key in datasets:
+            action = input(f"Noise value '{noise_key}' already exists. Do you want to (O)verwrite, (E)xtend or (S)kip it? (O/E/S): ").strip().lower()
+            if action == 'o':
+                datasets[noise_key] = data
+            elif action == 'e':
+                datasets[noise_key] = np.vstack((datasets[noise_key], data))
+            elif action == 's':
+                print(f"Skipping noise value '{noise_key}'.")
+                continue
+            else:
+                print("Invalid input. Skipping this noise value.")
+                continue
+        else:
+            datasets[noise_key] = data
 
     parent_dir = os.path.dirname(os.path.dirname(__file__))  # Get the parent directory of 'src'
 
@@ -206,12 +214,11 @@ def save_dataset(dim, num_img, test_seed=None, dir="my_synthesized_data"):
 
     file_path = os.path.join(data_dir, dir + '.npz')
 
-    np.savez(file_path, n_00=noise_00, n_70=noise_70,
-                     n_80=noise_80, n_90=noise_90, n_100=noise_100, labels=labels)
+    np.savez(file_path, **datasets)
     
     print(f"\nDataset saved in '{file_path}'")
 
-def main(dim_list, img_list, file_name):
+def main(dim_list, img_list, file_name, noise_values):
     for i in range(len(dim_list)):
         dim = dim_list[i]
         file_path = f"{dim}x{dim}_{file_name}"
@@ -228,7 +235,7 @@ def main(dim_list, img_list, file_name):
             if new.lower() == "y":
                 print(f"Recreating {dim}x{dim} dataset")
                 num_img = img_list[i]
-                save_dataset(dim=dim, num_img=num_img, test_seed=None, dir=file_path)
+                save_dataset(dim=dim, num_img=num_img, test_seed=None, dir=file_path, noise_values=noise_values)
             else:
                 print(f"Not recreating {dim}x{dim} dataset.")
             print()
@@ -236,4 +243,4 @@ def main(dim_list, img_list, file_name):
         else:
             num_img = img_list[i]
             print(f"Creating {dim}x{dim} dataset")
-            save_dataset(dim=dim, num_img=num_img, test_seed=None, dir=file_path)
+            save_dataset(dim=dim, num_img=num_img, test_seed=None, dir=file_path, noise_values=noise_values)
