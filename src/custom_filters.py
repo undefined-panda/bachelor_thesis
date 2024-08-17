@@ -45,6 +45,24 @@ def sobel_filter(direction="both"):
     else:
         raise ValueError("Invalid direction. Use 'x', 'y', or 'both'.")
 
+def sharr_filter(direction="both"):
+    sharr_x = np.array(([-3,  0,  3],
+                        [-10,  0,  10],
+                        [-3,  0,  3]), dtype=np.float32)
+
+    sharr_y = np.array(([ 3,  10,  3],
+                        [ 0,  0,  0],
+                        [-3, -10, -3]), dtype=np.float32)
+    
+    if direction == "x":
+        return sharr_x
+    elif direction == 'y':
+        return sharr_y
+    elif direction == 'both':
+        return sharr_x, sharr_y
+    else:
+        raise ValueError("Invalid direction. Use 'x', 'y', or 'both'.")
+
 def kirsch_filter(directions="all"):
     filters = {
         'N': np.array([[-3, -3,  5],
