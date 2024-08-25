@@ -77,7 +77,7 @@ class DefaultNet(nn.Module):
         return x
 
 class CustomNet(nn.Module):
-    def __init__(self, dim, num_classes, filters=None, train_custom_filters=False, custom_filter_layer=True):
+    def __init__(self, dim, num_classes, filters, train_custom_filters=False, custom_filter_layer=True):
         super(CustomNet, self).__init__()
 
         self.custom_filter_layer = custom_filter_layer
