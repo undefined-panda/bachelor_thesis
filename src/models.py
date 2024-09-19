@@ -1,5 +1,7 @@
 """ 
 This file is contains the neural network classes implemented with PyTorch.
+
+@author Jad Dayoub, 7425569
 """
 
 import numpy as np
@@ -77,6 +79,10 @@ class DefaultNet(nn.Module):
         return x
 
 class CustomNet(nn.Module):
+    """
+    CNN with an extra conv layer at the beginning for custom filters.
+    """
+
     def __init__(self, dim, num_classes, filters, train_custom_filters=False, custom_filter_layer=True):
         super(CustomNet, self).__init__()
 
@@ -131,14 +137,18 @@ class CustomNet(nn.Module):
         return x
 
 class CannyNet(nn.Module):
-    def __init__(self, dim, num_classes, canny_kernel, custom_filters, train_custom_filters=False):
+    """
+    CNN with two conv layers at the beginning. The first one contains a smoothing filter like the gaussian filter. The second one is for custom filters.
+    """
+
+    def __init__(self, dim, num_classes, gauss_kernel, custom_filters, train_custom_filters=False):
         super(CannyNet, self).__init__()
 
-        self.canny = nn.Conv2d(1, len(canny_kernel), kernel_size=3, padding=1, bias=False)
-        self.canny.weight = nn.Parameter(canny_kernel)
+        self.canny = nn.Conv2d(1, len(gauss_kernel), kernel_size=3, padding=1, bias=False)
+        self.canny.weight = nn.Parameter(gauss_kernel)
         self.canny.weight.requires_grad = False
 
-        self.conv0 = nn.Conv2d(len(canny_kernel), len(custom_filters), kernel_size=3, padding=1, bias=False)
+        self.conv0 = nn.Conv2d(len(gauss_kernel), len(custom_filters), kernel_size=3, padding=1, bias=False)
         self.conv0.weight = nn.Parameter(custom_filters)
 
         if not train_custom_filters:

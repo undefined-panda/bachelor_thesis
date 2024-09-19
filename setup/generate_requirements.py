@@ -1,3 +1,7 @@
+"""
+@author Jad Dayoub, 7425569
+"""
+
 import os
 import subprocess
 

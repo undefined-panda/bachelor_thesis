@@ -1,5 +1,7 @@
 """
 This file contains helper functions for better print, calculations and the fit function.
+
+@author Jad Dayoub, 7425569
 """
 
 import numpy as np
@@ -135,6 +137,10 @@ def replace_value_with_value(filters, value1, value2):
     return np.where(filters == value1, value2, filters)
 
 def train_model(model, epoch, opt, loss_fun, train_data, device, valid_data, learn_plot=True):
+    """
+    Trains the model on train_data and tests on valid_data, if provided.
+    """
+
     train_loss = 0
     model.train()
     for sample, label in train_data:
@@ -174,6 +180,10 @@ def train_model(model, epoch, opt, loss_fun, train_data, device, valid_data, lea
         return train_loss
 
 def test_model(model, loss_fun, device, test_data, learn_plot=True):
+    """
+    Tests the model on test_data.
+    """
+
     print() if learn_plot else None
     model.eval()
 

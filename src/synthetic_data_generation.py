@@ -1,5 +1,8 @@
 """
-This file contains the functions to generate my synthetic data.
+This file contains the functions to generate my synthetic data. As I got access to the ML-PPA Framework and used their synthesized data, 
+the majority this file doesn't contribute to the goal of my thesis.
+
+@author Jad Dayoub, 7425569
 """
 
 import matplotlib.pyplot as plt
@@ -12,6 +15,7 @@ from torch.utils.data import TensorDataset, DataLoader
 # my files
 from utils import exponential_decay, my_round, number_iterations, manhatten_distance, get_odd_number
 
+# Not in use anymore.
 def generate_pulsar_variation(dim, num_img, ranges):
     """
     Calculates the pulsar form with given distribution of total number and the parameter ranges for coincidence for the exponential decay function.
@@ -37,6 +41,7 @@ def generate_pulsar_variation(dim, num_img, ranges):
 
     return y_values_list
 
+# Not in use anymore.
 def generate_pulsars(dim, num_img, distr_percentage=[1/5, 2/5, 2/5], test_seed=None):
     """
     Creates pulsars with different variations.
@@ -63,6 +68,7 @@ def generate_pulsars(dim, num_img, distr_percentage=[1/5, 2/5, 2/5], test_seed=N
     
     return y_values_list
 
+# Not in use anymore.
 def generate_pulsar_img(dim, y_values, background):
     """
     Takes noisy background and lays the pulsar form on top of it. Fills missing pixels with number of pixels according to manhatten distance.
@@ -84,6 +90,7 @@ def generate_pulsar_img(dim, y_values, background):
 
     return final_pulsar_img
 
+# Not in use anymore.
 def generate_background(height, width, noise):
     noise_image = np.random.normal(loc=noise*127.5, scale=noise*127.5, size=(height, width))
     noise_image = np.clip(noise_image, 0, 255)
@@ -91,6 +98,7 @@ def generate_background(height, width, noise):
 
     return noise_image
 
+# Not in use anymore.
 def generate_dataset(dim, y_values_list, noise, test_seed=None, plot=False):
     """
     Creates pulsar and non-pulsar images.
@@ -173,6 +181,7 @@ def generate_train_test_valid_data(data, labels, with_valid=False, bs=32, test_s
     else:
         return train_loader, test_loader
 
+# Not in use anymore.
 def save_dataset(dim, num_img, noise_values, test_seed=None, dir="my_synthesized_data_complex"):
     """
     Creates datasets with different noise levels and saves it.
@@ -218,6 +227,7 @@ def save_dataset(dim, num_img, noise_values, test_seed=None, dir="my_synthesized
     
     print(f"\nDataset saved in '{file_path}'")
 
+# Not in use anymore.
 def main(dim_list, img_list, file_name, noise_values):
     for i in range(len(dim_list)):
         dim = dim_list[i]
